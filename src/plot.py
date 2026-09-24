@@ -70,6 +70,19 @@ ACTUAL_COLOR = "#2f6db5"
 TARGET_COLOR = "#c0392b"
 
 
+# 账户趋势图配色：账户数不多时用这套固定色，超出长度则改用 tab20 均匀取色
+# 注意历史上日期列占了索引 0，所以第一个数据列从索引 1 开始，这里保持原样以免图变色
+ACCOUNT_PALETTE = ["#2f6db5", "#e67e22", "#27ae60", "#16a085", "#c0392b", "#8e44ad", "#7f8c8d"]
+
+
+def _account_colors(count: int) -> list:
+    """给 count 个账户分配互不重复的颜色。"""
+    if count <= len(ACCOUNT_PALETTE):
+        return [ACCOUNT_PALETTE[(i + 1) % len(ACCOUNT_PALETTE)] for i in range(count)]
+    cmap = matplotlib.colormaps["tab20"].resampled(count)
+    return [cmap(i) for i in range(count)]
+
+
 def _scenario_label(deposit: float, rate: float) -> str:
     for s in config.PLAN_SCENARIOS:
         if s["deposit"] == deposit and abs(s["rate"] - rate) < 1e-9:
@@ -159,11 +172,10 @@ def render_accounts(accounts: pd.DataFrame, out_path=None) -> str:
     out_path = _mkdir(out_path or config.OUTPUT_ACCOUNTS_PNG)
     fig, ax = plt.subplots(figsize=(12, 7), dpi=130)
 
-    palette = ["#2f6db5", "#e67e22", "#27ae60", "#16a085", "#c0392b", "#8e44ad", "#7f8c8d"]
-    for i, col in enumerate(accounts.columns):
-        if col == "日期":
-            continue
-        color = palette[i % len(palette)]
+    cols = [c for c in accounts.columns if c != "日期"]
+    colors = _account_colors(len(cols))
+    for i, col in enumerate(cols):
+        color = colors[i]
         if col in config.LIABILITY_COLUMNS:
             # 负债用虚线
             ax.plot(accounts["日期"], accounts[col], marker="o", linewidth=2,
