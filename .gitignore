@@ -1,0 +1,17 @@
+# 虚拟环境（本机打包的 .venv 不可用，依赖用 requirements.txt 重装）
+.venv/
+venv/
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# 生成的图表：由 main.py 从真实 Excel 生成，含个人资产数据，不入库
+output/
+
+# 编辑器
+.idea/
+*.swp
+.DS_Store
