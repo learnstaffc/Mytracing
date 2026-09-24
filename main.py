@@ -2,11 +2,13 @@
 
 用法：
   python main.py                          # 读取配置的 ASSET_FILE 并出图
-  python main.py --file /path/to/x.xlsx   # 临时指定文件
-  python main.py --sheet other            # 临时指定 sheet
-  python main.py --init-template /path/to/template.xlsx  # 生成示例模板
+  python main.py --file /path/to/x.xlsx   # 临时指定文件（Excel）
+  python main.py --file /path/to/x.csv    # 临时指定文件（CSV，自动按扩展名识别）
+  python main.py --sheet other            # 临时指定 sheet（仅 Excel 有效）
+  python main.py --init-template /path/to/template.xlsx  # 生成示例模板（.csv 也行）
 """
 import argparse
+from pathlib import Path
 
 from src import config, template
 from src.loader import load_accounts, load_net_assets
@@ -16,14 +18,15 @@ from src.projection import milestone, plan_curve
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="个人资产增长与百万目标可视化")
-    ap.add_argument("--file", help="覆盖数据文件路径（默认取 config.ASSET_FILE）")
-    ap.add_argument("--sheet", help="覆盖 sheet 名（默认取 config.SHEET）")
-    ap.add_argument("--init-template", metavar="PATH", help="在指定路径生成示例模板后退出")
+    ap.add_argument("--file", help="覆盖数据文件路径（默认取 config.ASSET_FILE）；支持 .xlsx/.xls 与 .csv，按扩展名自动识别")
+    ap.add_argument("--sheet", help="覆盖 sheet 名（默认取 config.SHEET）；仅对 Excel 有效，CSV 会忽略")
+    ap.add_argument("--init-template", metavar="PATH",
+                    help="在指定路径生成示例模板后退出；路径以 .csv 结尾则生成 CSV，否则生成 Excel")
     args = ap.parse_args()
 
     if args.init_template:
         path = template.create_template(args.init_template)
-        print(f"示例模板已生成: {path}\n请按每月 1 号的记录填写资产/负债，然后运行 python main.py。")
+        print(f"示例模板已生成: {path}\n请按每月 1 号的记录填写资产/负债，然后运行 python main.py --file {path}")
         return
 
     # ---- 读取实际净资产 ----
@@ -32,7 +35,10 @@ def main() -> None:
     latest = df.iloc[-1]
 
     print("=" * 60)
-    print(f"数据文件 : {args.file or config.ASSET_FILE}  (sheet: {args.sheet or config.SHEET})")
+    data_file = args.file or config.ASSET_FILE
+    is_excel = Path(data_file).suffix.lower() in {".xlsx", ".xlsm", ".xls"}
+    sheet_note = f"  (sheet: {args.sheet or config.SHEET})" if is_excel else "  (CSV, 无 sheet)"
+    print(f"数据文件 : {data_file}{sheet_note}")
     print(f"记录期数 : {len(df)} 个月（{start_date:%Y-%m-%d} ~ {df['日期'].max():%Y-%m-%d}）")
     print(f"最新净资产: ¥{latest['净资产']:,.2f}")
     print("=" * 60)

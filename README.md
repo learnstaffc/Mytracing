@@ -25,7 +25,8 @@
 ![净资产总值变化](images/net_assets_delta.png)
 
 ## 功能
-- 从外部 Excel（默认 `/mnt/d/learning.xlsx` 的 `record` sheet）读取每月 1 号的资产负债记录，计算净资产
+- 从外部文件（默认 `/mnt/d/learning.xlsx` 的 `record` sheet）读取每月 1 号的资产负债记录，计算净资产
+- **支持 Excel 与 CSV 两种数据源**，按文件扩展名自动识别，CSV 会自动处理 UTF-8 / GBK 编码与分隔符
 - 净资产 = Σ(资产列 × 汇率) − Σ(负债列)，美股（US-inv）按 6.6 汇率折算成人民币
 - **主图**：实际净资产 + 4 条计划曲线（月存 1万/1.5万 × 年化 5%/10%，月复利、月初存入）+ 100 万目标线 + 达标日期标注
 - **账户趋势图**：有记录以来各资产/负债账户的月度变化（US-inv 折算人民币）
@@ -39,11 +40,13 @@ pip install -r requirements.txt
 ## 使用
 ```bash
 # 1) 首次使用：在指定路径生成示例模板（不放在项目内）
-python main.py --init-template /你的路径/template.xlsx
+python main.py --init-template /你的路径/template.xlsx   # 生成 Excel 模板
+python main.py --init-template /你的路径/template.csv    # 生成 CSV 模板（同样可用）
 
 # 2) 按每月 1 号填写资产/负债后，运行：
-python main.py                    # 使用 config.py 里的 ASSET_FILE
-python main.py --file /你的路径/learning.xlsx --sheet record   # 临时指定文件
+python main.py                              # 使用 config.py 里的 ASSET_FILE
+python main.py --file /你的路径/learning.xlsx --sheet record   # 指定 Excel 与 sheet
+python main.py --file /你的路径/learning.csv                   # 指定 CSV
 
 # 3) 输出
 #    控制台：各场景达标日期/所需月数
@@ -51,9 +54,23 @@ python main.py --file /你的路径/learning.xlsx --sheet record   # 临时指�
 #         yearly_compare.png（逐年对比）、net_assets_delta.png（净资产总值+每月环比）
 ```
 
-## Excel 数据格式
+## 数据格式（Excel / CSV）
 
-程序只读一个 `.xlsx` 文件，默认取名为 `record` 的 sheet（`SHEET` 可改）。**第一行是表头，从第二行起每月 1 号一行**；行序无所谓，程序会按月排序，并丢弃日期为空的行。
+程序只读一个数据文件，**按扩展名自动识别**：
+
+| 扩展名 | 读取方式 | 说明 |
+|---|---|---|
+| `.xlsx` / `.xlsm` / `.xls` | `pandas.read_excel` | 默认取名为 `record` 的 sheet，可用 `SHEET` 或 `--sheet` 改 |
+| `.csv` / `.txt` / `.tsv` | `pandas.read_csv` | 没有工作表概念，`--sheet` 会被忽略 |
+
+**两种格式的表结构完全一样：第一行是表头，从第二行起每月 1 号一行**；行序无所谓，程序会按月排序，并丢弃日期为空的行。
+
+CSV 的几点补充：
+
+- **编码自动识别**：先按 BOM 判断（UTF-8 / UTF-16 / UTF-32），没有 BOM 时先试 UTF-8，失败再退回 GB18030。中文版 Excel「另存为 CSV」默认就是 GBK 系，可以直接读。
+- **分隔符**：默认按逗号切；如果只切出一列，会自动嗅探分号或制表符。
+- **`Sum` 列**：Excel 模板里 `Sum` 是公式，CSV 模板里只能写成算好的数值，两种程序都认。
+- [`examples/sample_data.csv`](examples/sample_data.csv) 是一份可以直接对照的示例。
 
 | 列名 | 类型 | 必填 | 说明 |
 |---|---|---|---|
@@ -78,7 +95,7 @@ python main.py --file /你的路径/learning.xlsx --sheet record   # 临时指�
 - **空白单元格按 0 计**，所以中途才开始记录的账户可以直接留空。
 - **缺列会直接报错退出**，并打印文件里实际有哪些列，方便对着改。
 
-对应的示例数据（和 `examples/sample_data.xlsx`、`python main.py --init-template template.xlsx` 生成的结构一致）：
+对应的示例数据（和 `examples/sample_data.xlsx` / `.csv`、`python main.py --init-template template.xlsx` 生成的结构一致）：
 
 | 日期 | ZSBank | WeFinace | A-inv | US-inv | Credit | Sum |
 |---|---|---|---|---|---|---|
