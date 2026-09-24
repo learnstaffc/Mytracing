@@ -54,8 +54,9 @@ def _setup_cjk_font() -> None:
     return chosen
 
 
-def _fmt_wan(value: float, _pos) -> str:
-    return f"{value / 10000:,.0f}万"
+def _fmt_wan(value: float, _pos=None, decimals: int = 0) -> str:
+    """把金额格式化成「万元」。decimals 控制小数位，小于万元的量级需要更多位数。"""
+    return f"{value / 10000:,.{decimals}f}万"
 
 
 # 场景配色：(月存, 年化) -> 颜色
@@ -122,9 +123,11 @@ def render(actual: pd.DataFrame, curves: dict[tuple[float, float], pd.DataFrame]
         ax.axvline(m["日期"], color=color, linestyle=":", linewidth=1, alpha=0.6)
         label = f"{_scenario_label(deposit, rate)}: {m['日期'].strftime('%Y-%m')}"
         offset = 14 if i % 2 == 0 else -24
+        # 白底避免文字压在目标虚线上看不清
         ax.annotate(label, xy=(m["日期"], m["余额"]),
                     xytext=(6, offset), textcoords="offset points",
-                    fontsize=9, color=color, fontweight="bold")
+                    fontsize=9, color=color, fontweight="bold",
+                    bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none", alpha=0.78))
 
     # ---- 坐标轴美化 ----
     ax.set_title("个人净资产 vs 存款计划（初始15万，月存1万/1.5万 × 5%/10%）",
@@ -137,7 +140,12 @@ def render(actual: pd.DataFrame, curves: dict[tuple[float, float], pd.DataFrame]
     ax.grid(True, which="both", linestyle="--", linewidth=0.5, alpha=0.5)
     ax.legend(loc="upper left", fontsize=9.5, ncol=2)
     fig.autofmt_xdate()
-    ax.set_xlim(left=start_date)
+
+    # 右侧留白，避免最右侧那个达标标签被画布边缘裁掉
+    last_date = max([actual["日期"].max()] + [m["日期"] for _, _, m in milestones])
+    span_days = (last_date - start_date).days or 1
+    ax.set_xlim(start_date - pd.Timedelta(days=span_days * 0.02),
+                last_date + pd.Timedelta(days=span_days * 0.12))
 
     fig.tight_layout()
     fig.savefig(out_path, bbox_inches="tight")
@@ -268,7 +276,8 @@ def render_net_assets_delta(actual: pd.DataFrame, out_path=None) -> str:
                             color="#27ae60" if dv >= 0 else "#c0392b")
     ax_bot.axhline(0, color="#7f8c8d", linewidth=0.8)
     ax_bot.set_ylabel("环比变化（万元）", fontsize=10)
-    ax_bot.yaxis.set_major_formatter(plt.FuncFormatter(_fmt_wan))
+    # 环比量级常在 ±1 万以内，整数格式化会把刻度全压成 "0万"，这里保留两位小数
+    ax_bot.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, p: _fmt_wan(v, p, 2)))
     ax_bot.grid(True, which="both", linestyle="--", linewidth=0.5, alpha=0.5)
 
     ax_bot.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m"))

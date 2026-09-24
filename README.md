@@ -2,6 +2,28 @@
 
 把「实际净资产变化」和「存款计划曲线」画在一起，并计算净资产何时达到 100 万。
 
+## 效果预览
+
+> 下面 4 张图全部由 `examples/sample_data.xlsx` 里的**虚构示例数据**生成，不对应任何真实账户。
+> 复现方式：`python examples/make_sample_data.py` 生成数据，再执行
+> `python main.py --file examples/sample_data.xlsx --sheet record`。
+
+**主图：实际净资产 + 4 条存款计划曲线 + 100 万目标线**
+
+![主图：个人净资产 vs 存款计划](images/net_asset_plan.png)
+
+**账户月度变化：各资产/负债账户逐月走势**
+
+![各资产账户月度变化](images/accounts_trend.png)
+
+**逐年对比：每个年度内 4 条理想计划线 vs 实际净资产**
+
+![逐年对比](images/yearly_compare.png)
+
+**净资产总值与每月环比增减**
+
+![净资产总值变化](images/net_assets_delta.png)
+
 ## 功能
 - 从外部 Excel（默认 `/mnt/d/learning.xlsx` 的 `record` sheet）读取每月 1 号的资产负债记录，计算净资产
 - 净资产 = Σ(资产列 × 汇率) − Σ(负债列)，美股（US-inv）按 6.6 汇率折算成人民币
